@@ -98,12 +98,7 @@ timer_sleep (int64_t ticks)
   
   ASSERT (intr_get_level () == INTR_ON);
   if (timer_elapsed (start) < ticks){
-    /* Set ticks for the current thread to the given ticks value and thread status to sleep */
-    current_t->wait_ticks = ticks + start;
-
-    /*Pass semaphore pointer to sema_down to down the semaphore, causing it to sleep*/
-    /*NOTE: Sema_down inherently called thread_block*/
-    sema_down(&(current_t->sema));
+    thread_sleep(current_t,ticks+start);
   }
 }
 
@@ -176,28 +171,6 @@ timer_print_stats (void)
 {
   printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
-
-static void wake_thread(struct thread* t,void* aux){
-  /*Get current time*/
-  int64_t start = timer_ticks ();
-
-  /* 3 conditions to wake a thread:
-
-     1. The time passed must be greater or equal to wait_ticks
-     2. status must be blocked since sema_down blocks it
-     3. Check that the wait_ticks is not -1 eg. for some other blocked thread
-  */
-  
-  if (start >= t->wait_ticks && t->status == THREAD_BLOCKED && t->wait_ticks != -1){
-    
-    /*Sema up on the semaphore to wake it up*/
-    sema_up(&(t->sema));
-    
-    /* Set ticks back to -1 */
-    t->wait_ticks = -1;
-
-  }
-}
   
 /* Timer interrupt handler. */
 static void
@@ -207,7 +180,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
   thread_tick ();
   /* With interrupts disabled, check through the all threads list and
      wake up anything that's currently sleeping && needs to be woken */
-  thread_foreach(&wake_thread,NULL);
+  thread_foreach(&thread_wake,NULL);
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer

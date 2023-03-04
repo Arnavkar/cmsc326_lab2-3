@@ -29,7 +29,7 @@ static struct list ready_list;
 static struct list all_list;
 
 /*List of sleeping processes, processes are added to this list when sleep() is called */
-static struct list sleeping_list;
+static struct list sleep_list;
 
 /* Idle thread. */
 static struct thread *idle_thread;
@@ -96,7 +96,7 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
-  list_init(&sleeping_list);
+  list_init(&sleep_list);
   
 
   /* Set up a thread structure for the running thread. */
@@ -249,6 +249,36 @@ thread_unblock (struct thread *t)
   intr_set_level (old_level);
 }
 
+void thread_wake(struct thread* t,void* aux){
+  /*Get current time*/
+  int64_t start = timer_ticks ();
+
+  /* 3 conditions to wake a thread:
+
+     1. The time passed must be greater or equal to wait_ticks
+     2. status must be blocked since sema_down blocks it
+     3. Check that the wait_ticks is not -1 eg. for some other blocked thread
+  */
+  
+  if (start >= t->wait_ticks && t->status == THREAD_BLOCKED && t->wait_ticks != -1){
+    /*Sema up on the semaphore to wake it up*/
+    sema_up(&(t->sema));
+    
+    /* Set ticks back to -1 */
+    t->wait_ticks = -1;
+  }
+}
+
+void thread_sleep(struct thread* t,int64_t wait_time){
+  /* Set ticks for the current thread to the given ticks value and thread status to sleep */
+  t->wait_ticks = wait_time;
+
+  /*Pass semaphore pointer to sema_down to down the semaphore, causing it to sleep*/
+  /*NOTE: Sema_down inherently called thread_block*/
+  sema_down(&(t->sema));
+
+}
+
 /* Returns the name of the running thread. */
 const char *
 thread_name (void) 
@@ -334,6 +364,22 @@ thread_foreach (thread_action_func *func, void *aux)
        e = list_next (e))
     {
       struct thread *t = list_entry (e, struct thread, allelem);
+      func (t, aux);
+    }
+}
+
+/* Invoke function 'func' on all sleeping threads */
+void
+sleeping_thread_foreach (thread_action_func *func, void *aux)
+{
+  struct list_elem *e;
+
+  ASSERT (intr_get_level () == INTR_OFF);
+
+  for (e = list_begin (&sleep_list); e != list_end (&sleep_list);
+       e = list_next (e))
+    {
+      struct thread *t = list_entry (e, struct thread, elem);
       func (t, aux);
     }
 }
