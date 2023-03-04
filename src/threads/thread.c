@@ -28,6 +28,9 @@ static struct list ready_list;
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
 
+/*List of sleeping processes, processes are added to this list when sleep() is called */
+static struct list sleeping_list;
+
 /* Idle thread. */
 static struct thread *idle_thread;
 
@@ -89,9 +92,12 @@ thread_init (void)
 {
   ASSERT (intr_get_level () == INTR_OFF);
 
+  /*Initialize all lists */
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
+  list_init(&sleeping_list);
+  
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -138,6 +144,7 @@ thread_tick (void)
   if (++thread_ticks >= TIME_SLICE)
     intr_yield_on_return ();
 }
+  
 
 /* Prints thread statistics. */
 void
@@ -463,6 +470,10 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+  
+  sema_init(&(t->sema),0);
+  ASSERT(&(t->sema) != NULL);
+  t->wait_ticks = -1;
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);

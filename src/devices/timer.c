@@ -7,6 +7,7 @@
 #include "threads/interrupt.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
+#include "tests/threads/tests.h"
   
 /* See [8254] for hardware details of the 8254 timer chip. */
 
@@ -29,6 +30,8 @@ static bool too_many_loops (unsigned loops);
 static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
 static void real_time_delay (int64_t num, int32_t denom);
+
+
 
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
    and registers the corresponding interrupt. */
@@ -90,10 +93,18 @@ void
 timer_sleep (int64_t ticks) 
 {
   int64_t start = timer_ticks ();
-
+  
+  struct thread* current_t = thread_current();
+  
   ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+  if (timer_elapsed (start) < ticks){
+    /* Set ticks for the current thread to the given ticks value and thread status to sleep */
+    current_t->wait_ticks = ticks + start;
+
+    /*Pass semaphore pointer to sema_down to down the semaphore, causing it to sleep*/
+    /*NOTE: Sema_down inherently called thread_block*/
+    sema_down(&(current_t->sema));
+  }
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -165,13 +176,38 @@ timer_print_stats (void)
 {
   printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
-
+
+static void wake_thread(struct thread* t,void* aux){
+  /*Get current time*/
+  int64_t start = timer_ticks ();
+
+  /* 3 conditions to wake a thread:
+
+     1. The time passed must be greater or equal to wait_ticks
+     2. status must be blocked since sema_down blocks it
+     3. Check that the wait_ticks is not -1 eg. for some other blocked thread
+  */
+  
+  if (start >= t->wait_ticks && t->status == THREAD_BLOCKED && t->wait_ticks != -1){
+    
+    /*Sema up on the semaphore to wake it up*/
+    sema_up(&(t->sema));
+    
+    /* Set ticks back to -1 */
+    t->wait_ticks = -1;
+
+  }
+}
+  
 /* Timer interrupt handler. */
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
+  /* With interrupts disabled, check through the all threads list and
+     wake up anything that's currently sleeping && needs to be woken */
+  thread_foreach(&wake_thread,NULL);
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
