@@ -93,7 +93,9 @@ struct thread
     struct list_elem allelem;           /* List element for all threads list. */
 
     /* Shared between thread.c and synch.c. */
-    struct list_elem elem;              /* List element for ready list or sleeping list */
+    struct list_elem elem;              /* List element for ready list */
+    
+    struct list_elem sleep_elem;	/*TODO List element for sleep list */
 
     /* Initialize thread semaphore pointer */
     struct semaphore sema;

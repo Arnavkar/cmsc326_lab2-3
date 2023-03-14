@@ -263,10 +263,10 @@ void thread_wake(struct thread* t,void* aux){
   if (start >= t->wait_ticks && t->status == THREAD_BLOCKED && t->wait_ticks != -1){
     /*Sema up on the semaphore to wake it up*/
     /*sema up will call thread_unblock, which puts the thread back on the ready list*/
-    list_remove(&(t->elem));
-    list_push_back(&ready_list, &(t->elem));
-      
     sema_up(&(t->sema));
+
+    /*TODO - remove this thread from the sleep list*/
+    list_remove(&(t->sleep_elem));
     
     /* Set ticks back to -1 */
     t->wait_ticks = -1;
@@ -279,8 +279,7 @@ void thread_sleep(struct thread* t,int64_t wait_time){
   t->wait_ticks = wait_time;
 
   /*TODO - Put this thread onto the sleeping list*/
-  list_remove(&(t->elem));
-  list_push_back(&sleep_list, &(t->elem));
+  list_push_back(&sleep_list, &(t->sleep_elem));
   
   /*Pass semaphore pointer to sema_down to down the semaphore, causing it to sleep*/
   /*NOTE: Sema_down inherently called thread_block*/
@@ -376,7 +375,7 @@ thread_foreach (thread_action_func *func, void *aux)
     }
 }
 
-/* Invoke function 'func' on all sleeping threads */
+/* TODO Invoke function 'func' on all sleeping threads */
 void
 sleeping_thread_foreach (thread_action_func *func, void *aux)
 {
@@ -387,7 +386,7 @@ sleeping_thread_foreach (thread_action_func *func, void *aux)
   for (e = list_begin (&sleep_list); e != list_end (&sleep_list);
        e = list_next (e))
     {
-      struct thread *t = list_entry (e, struct thread, elem);
+      struct thread *t = list_entry (e, struct thread, sleep_elem);
       func (t, aux);
     }
 }
@@ -647,3 +646,4 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
