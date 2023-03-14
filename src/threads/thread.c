@@ -263,9 +263,10 @@ void thread_wake(struct thread* t,void* aux){
   if (start >= t->wait_ticks && t->status == THREAD_BLOCKED && t->wait_ticks != -1){
     /*Sema up on the semaphore to wake it up*/
     /*sema up will call thread_unblock, which puts the thread back on the ready list*/
+    list_remove(&(t->elem));
+    list_push_back(&ready_list, &(t->elem));
+      
     sema_up(&(t->sema));
-
-    /*TODO - remove this thread from the sleep list/
     
     /* Set ticks back to -1 */
     t->wait_ticks = -1;
@@ -277,9 +278,9 @@ void thread_sleep(struct thread* t,int64_t wait_time){
   /* Set ticks for the current thread to the given ticks value and thread status to sleep */
   t->wait_ticks = wait_time;
 
-  /*TODO - Put this thread onto the sleeping list
-
-    list_push_back(&sleep_list,&t->elem)*/
+  /*TODO - Put this thread onto the sleeping list*/
+  list_remove(&(t->elem));
+  list_push_back(&sleep_list, &(t->elem));
   
   /*Pass semaphore pointer to sema_down to down the semaphore, causing it to sleep*/
   /*NOTE: Sema_down inherently called thread_block*/

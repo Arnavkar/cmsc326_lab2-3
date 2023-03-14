@@ -182,7 +182,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
      wake up anything that's currently sleeping && needs to be woken */
 
   /* TODO - Use sleeping_thread_foreach to loop through sleep list instead of all list*/
-  thread_foreach(&thread_wake,NULL);
+  sleeping_thread_foreach(&thread_wake,NULL);
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
