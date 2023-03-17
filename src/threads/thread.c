@@ -253,14 +253,15 @@ void thread_wake(struct thread* t,void* aux){
   /*Get current time*/
   int64_t start = timer_ticks ();
 
-  /* 3 conditions to wake a thread:
+  /* 3 possible conditions to wake a thread:
 
      1. The time passed must be greater or equal to wait_ticks
-     2. status must be blocked since sema_down blocks it
-     3. Check that the wait_ticks is not -1 eg. for some other blocked thread
+     2. status must be blocked since sema_down blocks it (not required for threads already on sleep_list)
+     3. Check that the wait_ticks is not -1 eg. for some other blocked thread (not required for threads already on sleep_list)
   */
-  
-  if (start >= t->wait_ticks && t->status == THREAD_BLOCKED && t->wait_ticks != -1){
+  ASSERT (t->status == THREAD_BLOCKED);
+  ASSERT (t->wait_ticks != -1);
+  if (start >= t->wait_ticks){
     /*Sema up on the semaphore to wake it up*/
     /*sema up will call thread_unblock, which puts the thread back on the ready list*/
     sema_up(&(t->sema));

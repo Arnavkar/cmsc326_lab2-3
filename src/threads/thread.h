@@ -95,7 +95,7 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element for ready list */
     
-    struct list_elem sleep_elem;	/*TODO List element for sleep list */
+    struct list_elem sleep_elem;	/* List element for sleep list */
 
     /* Initialize thread semaphore pointer */
     struct semaphore sema;
