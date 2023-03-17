@@ -376,7 +376,7 @@ thread_foreach (thread_action_func *func, void *aux)
     }
 }
 
-/* TODO Invoke function 'func' on all sleeping threads */
+/* Invoke function 'func' on all sleeping threads */
 void
 sleeping_thread_foreach (thread_action_func *func, void *aux)
 {
@@ -384,6 +384,7 @@ sleeping_thread_foreach (thread_action_func *func, void *aux)
 
   ASSERT (intr_get_level () == INTR_OFF);
 
+  //None
   for (e = list_begin (&sleep_list); e != list_end (&sleep_list);
        e = list_next (e))
     {
