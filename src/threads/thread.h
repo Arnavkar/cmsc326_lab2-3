@@ -112,6 +112,13 @@ struct thread
     unsigned magic;                     /* Detects stack overflow. */
   };
 
+/* Definition of a Priority Queue Struct */
+struct priority_queue
+{
+  struct list queue;                   /* Queue which will point to threads */
+  int priority;                        /* priority for this queue as int */
+};
+
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */

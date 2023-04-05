@@ -24,6 +24,9 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
+/*Array of priority_queues which defines the multi level feedback queue*/
+static struct priority_queue mlfq[PRI_MAX+1];
+
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
@@ -94,16 +97,33 @@ thread_init (void)
 
   /*Initialize all lists */
   lock_init (&tid_lock);
-  list_init (&ready_list);
-  list_init (&all_list);
-  list_init(&sleep_list);
   
-
+  list_init (&all_list);
+  list_init (&sleep_list);
+  
+  if (thread_mlfqs){
+    list_init (&mlfq);
+    init_priority_queues(mlfq);
+  } else {
+    list_init (&ready_list);
+  }
+  
   /* Set up a thread structure for the running thread. */
+  //Default is the highest Priority for MLFQS
   initial_thread = running_thread ();
-  init_thread (initial_thread, "main", PRI_DEFAULT);
+  init_thread (initial_thread, "main", PRI_MAX);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
+}
+
+/*Function to initialize all priority_queues from 0 - 19*/
+void init_priority_queues(struct priority_queue* mlfq){
+  for (int i = 0; i <= PRI_MAX; i++){
+    struct priority_queue* pq = (struct priority_queue*)malloc(sizeof(struct priority_queue));
+    pq->priority = i;
+    list_init(&(pq->queue));
+    mlfq[i] = *pq;
+  }
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -210,6 +230,15 @@ thread_create (const char *name, int priority,
 
   return tid;
 }
+/* TODO: NEED TO MODIFY FUNCTIONS TO MOVE THREADS TO MLFQ INSTEAD OF READY LIST
+ Changes made:
+ - thread_unblock
+
+ Changes not made:
+ - schedule
+ - thread_yield
+ - 
+*/
 
 /* Puts the current thread to sleep.  It will not be scheduled
    again until awoken by thread_unblock().
@@ -235,6 +264,7 @@ thread_block (void)
    be important: if the caller had disabled interrupts itself,
    it may expect that it can atomically unblock a thread and
    update other data. */
+
 void
 thread_unblock (struct thread *t) 
 {
@@ -244,7 +274,19 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+
+  if (thread_mlfqs){
+    /* Iterate through mlfq, place thread in the right queue based on its priority */
+    for (int i = 0; i <= PRI_MAX ;i++){
+      if (mlfq[i].priority == t->priority){
+	list_push_back (&(mlfq[i].queue), &(t->elem));
+	break;
+      }
+    }
+  } else {
+    list_push_back (&ready_list, &t->elem);
+  }
+  
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
