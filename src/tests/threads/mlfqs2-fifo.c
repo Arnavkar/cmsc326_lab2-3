@@ -54,7 +54,7 @@ test_mlfqs2_fifo (void)
   lock_init (&lock);
   lock_acquire(&lock); // main holds lock
   
-  printf("All threads at priority %d\n",PRI_DEFAULT - 2);
+  printf("All threads at priority %d\n",PRI_DEFAULT);
   thread_set_priority (PRI_MIN); // main at min priority
   for (i = 0; i < THREAD_CNT; i++) 
     {
@@ -65,7 +65,7 @@ test_mlfqs2_fifo (void)
       d->iterations = 0;
       d->lock = &lock; // all share one lock
       d->op = &op;
-      thread_create (name, PRI_DEFAULT - 2, simple_thread_func, d);
+      thread_create (name, PRI_DEFAULT, simple_thread_func, d);
     }
   //print_mlfqs();
   lock_release(&lock); // all threads can run

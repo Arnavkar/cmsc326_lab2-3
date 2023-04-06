@@ -57,7 +57,8 @@ static long long kernel_ticks;  /* # of timer ticks in kernel threads. */
 static long long user_ticks;    /* # of timer ticks in user programs. */
 
 /* Scheduling. */
-#define TIME_SLICE 4            /* # of timer ticks to give each thread. */
+#define TIME_SLICE 1         /* # of timer ticks to give each thread. */
+#define REFRESH_PRIORITY 50   /* # of timer ticks before refreshing priroity for all threads to MAX */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 
 /* If false (default), use round-robin scheduler.
@@ -125,7 +126,10 @@ void init_priority_queues(struct priority_queue* mlfq){
   for (int i = 0; i <= PRI_MAX; i++){
     //No need malloc because we have already statically allocated memory for the priority queues above
     mlfq[i].priority = i;
+    mlfq[i].num_quantums = PRI_MAX+1-i; // At priority 0, num_quantums = 20 | At  priority 19, num_quantums = 1
     list_init(&(mlfq[i].queue));
+    
+    //Ensure all lists are empty and properly initialized
     ASSERT(list_empty(&(mlfq[i].queue))==true);
   }
 }
@@ -153,6 +157,7 @@ void
 thread_tick (void) 
 {
   struct thread *t = thread_current ();
+  int num_quantums;
 
   /* Update statistics. */
   if (t == idle_thread)
@@ -165,7 +170,9 @@ thread_tick (void)
     kernel_ticks++;
 
   /* Enforce preemption. */
-  if (++thread_ticks >= TIME_SLICE)
+  num_quantums = mlfq[t->priority].num_quantums;
+    
+  if (++thread_ticks >= TIME_SLICE*num_quantums)
     intr_yield_on_return ();
 }
   
@@ -234,12 +241,6 @@ thread_create (const char *name, int priority,
 
   return tid;
 }
-/* TODO: NEED TO MODIFY FUNCTIONS TO MOVE THREADS TO MLFQ INSTEAD OF READY LIST
- Changes made:
- - thread_unblock
- - thread_yield
- - next_thread_to_run (called by schedule)
-*/
 
 /* Puts the current thread to sleep.  It will not be scheduled
    again until awoken by thread_unblock().
@@ -441,14 +442,7 @@ void
 thread_set_priority (int new_priority) 
 {
   struct thread *cur = thread_current ();
-  struct list_elem *e;
-  
-  if (thread_mlfqs){
-    e = list_remove(&cur->elem);
-    list_push_back(&mlfq[new_priority].queue,&cur->elem)
-  }
   cur->priority = new_priority;
-  }
 }
 
 /* Returns the current thread's priority. */

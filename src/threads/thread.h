@@ -116,7 +116,8 @@ struct thread
 struct priority_queue
 {
   struct list queue;                   /* Queue which will point to threads */
-  int priority;                        /* priority for this queue as int */
+  int priority;                        /* priority of a queue, which should match its array index position (possible sanity check) */
+  int num_quantums;                    /* Variable to track the number of quantums for a process at a specific level priority level */       
 };
 
 /* If false (default), use round-robin scheduler.
