@@ -100,11 +100,15 @@ thread_init (void)
   
   list_init (&all_list);
   list_init (&sleep_list);
-  
+
+  /*
+   If mlfq, initialize mlfq priority queues
+   Else, initialize ready list
+  */
   if (thread_mlfqs){
-    list_init (&mlfq);
     init_priority_queues(mlfq);
-  } else {
+    
+  }else {
     list_init (&ready_list);
   }
   
@@ -119,10 +123,9 @@ thread_init (void)
 /*Function to initialize all priority_queues from 0 - 19*/
 void init_priority_queues(struct priority_queue* mlfq){
   for (int i = 0; i <= PRI_MAX; i++){
-    struct priority_queue* pq = (struct priority_queue*)malloc(sizeof(struct priority_queue));
-    pq->priority = i;
-    list_init(&(pq->queue));
-    mlfq[i] = *pq;
+    //No need malloc because we have already statically allocated memory for the priority queues above
+    mlfq[i].priority = i;
+    list_init(&mlfq[i].queue);
   }
 }
 
@@ -233,11 +236,8 @@ thread_create (const char *name, int priority,
 /* TODO: NEED TO MODIFY FUNCTIONS TO MOVE THREADS TO MLFQ INSTEAD OF READY LIST
  Changes made:
  - thread_unblock
-
- Changes not made:
- - schedule
  - thread_yield
- - 
+ - next_thread_to_run (called by schedule)
 */
 
 /* Puts the current thread to sleep.  It will not be scheduled
@@ -269,20 +269,16 @@ void
 thread_unblock (struct thread *t) 
 {
   enum intr_level old_level;
-
+  int thread_priority;
+  
   ASSERT (is_thread (t));
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
 
   if (thread_mlfqs){
-    /* Iterate through mlfq, place thread in the right queue based on its priority */
-    for (int i = 0; i <= PRI_MAX ;i++){
-      if (mlfq[i].priority == t->priority){
-	list_push_back (&(mlfq[i].queue), &(t->elem));
-	break;
-      }
-    }
+    /* Place thread in the right queue based on its own priority */
+    list_push_back(&(mlfq[t->priority].queue),&(t->elem));
   } else {
     list_push_back (&ready_list, &t->elem);
   }
@@ -394,8 +390,13 @@ thread_yield (void)
   ASSERT (!intr_context ());
 
   old_level = intr_disable ();
-  if (cur != idle_thread) 
-    list_push_back (&ready_list, &cur->elem);
+  if (thread_mlfqs){
+    if(cur != idle_thread)
+      list_push_back(&(mlfq[cur->priority].queue),&cur->elem);
+  } else {
+    if (cur != idle_thread) 
+      list_push_back (&ready_list, &cur->elem);
+  }
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -426,7 +427,6 @@ sleeping_thread_foreach (thread_action_func *func, void *aux)
 
   ASSERT (intr_get_level () == INTR_OFF);
 
-  //None
   for (e = list_begin (&sleep_list); e != list_end (&sleep_list);
        e = list_next (e))
     {
@@ -598,10 +598,31 @@ alloc_frame (struct thread *t, size_t size)
 static struct thread *
 next_thread_to_run (void) 
 {
-  if (list_empty (&ready_list))
+  if(thread_mlfqs){
+    /*
+      Check the top most priority queue
+      1. If empty, iterate to the next queue
+      2. If the current queue is not empty, pop from the front of this queue
+      3. if all queues are empty, return the idle thread
+    */
+    
+    for (int i = PRI_MAX;i>=0;i++){
+      if (list_empty(&(mlfq[i].queue))){
+	continue;
+      } else {
+	list_entry (list_pop_front (&(mlfq[i].queue)), struct thread, elem);
+      }
+    }
     return idle_thread;
-  else
-    return list_entry (list_pop_front (&ready_list), struct thread, elem);
+
+  } else {
+    
+    if (list_empty (&ready_list)){
+      return idle_thread;
+    } else {
+      return list_entry (list_pop_front (&ready_list), struct thread, elem);
+    }
+  }
 }
 
 /* Completes a thread switch by activating the new thread's page
