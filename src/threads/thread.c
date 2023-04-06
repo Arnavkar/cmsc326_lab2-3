@@ -440,7 +440,15 @@ sleeping_thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  thread_current ()->priority = new_priority;
+  struct thread *cur = thread_current ();
+  struct list_elem *e;
+  
+  if (thread_mlfqs){
+    e = list_remove(&cur->elem);
+    list_push_back(&mlfq[new_priority].queue,&cur->elem)
+  }
+  cur->priority = new_priority;
+  }
 }
 
 /* Returns the current thread's priority. */
