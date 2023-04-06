@@ -157,7 +157,6 @@ void
 thread_tick (void) 
 {
   struct thread *t = thread_current ();
-  int num_quantums;
 
   /* Update statistics. */
   if (t == idle_thread)
@@ -169,11 +168,19 @@ thread_tick (void)
   else
     kernel_ticks++;
 
-  /* Enforce preemption. */
-  num_quantums = mlfq[t->priority].num_quantums;
+  /* Enforce preemption. When preemption is enforced, a thread will drop in priority*/
+  if (++thread_ticks >= TIME_SLICE*mlfq[t->priority].num_quantums){
+    /*
+      If pre-empted and thread priority is greater than 1, decrease priority by 1 
+      NOTE: Only the idle thread lives on priority MIN, other threads have lowest priority as 1
+
+      thread_set_priority() will move thread to the next queue
+    */
+    if(t->priority > 1)
+      thread_set_priority(t->priority-1);
     
-  if (++thread_ticks >= TIME_SLICE*num_quantums)
     intr_yield_on_return ();
+  }
 }
   
 
@@ -442,6 +449,12 @@ void
 thread_set_priority (int new_priority) 
 {
   struct thread *cur = thread_current ();
+  
+  if (thread_mlfqs){
+    
+    list_remove(&cur->elem);
+    list_push_back(&(mlfq[new_priority].queue),&cur->elem);
+  }
   cur->priority = new_priority;
 }
 
