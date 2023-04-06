@@ -125,7 +125,8 @@ void init_priority_queues(struct priority_queue* mlfq){
   for (int i = 0; i <= PRI_MAX; i++){
     //No need malloc because we have already statically allocated memory for the priority queues above
     mlfq[i].priority = i;
-    list_init(&mlfq[i].queue);
+    list_init(&(mlfq[i].queue));
+    ASSERT(list_empty(&(mlfq[i].queue))==true);
   }
 }
 
@@ -606,22 +607,16 @@ next_thread_to_run (void)
       3. if all queues are empty, return the idle thread
     */
     
-    for (int i = PRI_MAX;i>=0;i++){
-      if (list_empty(&(mlfq[i].queue))){
-	continue;
-      } else {
-	list_entry (list_pop_front (&(mlfq[i].queue)), struct thread, elem);
-      }
+    for (int i = PRI_MAX;i>=0;i--){
+      if (list_empty(&(mlfq[i].queue)))	continue;
+      else return list_entry (list_pop_front (&(mlfq[i].queue)), struct thread, elem);
     }
     return idle_thread;
 
   } else {
     
-    if (list_empty (&ready_list)){
-      return idle_thread;
-    } else {
-      return list_entry (list_pop_front (&ready_list), struct thread, elem);
-    }
+    if (list_empty (&ready_list)) return idle_thread;
+    else return list_entry (list_pop_front (&ready_list), struct thread, elem);
   }
 }
 

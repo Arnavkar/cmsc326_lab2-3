@@ -12,6 +12,8 @@
 #include "threads/synch.h"
 #include "threads/thread.h"
 
+#define NUM_MLFQS 20  // Number of queues
+
 struct thread_info 
   {
     int64_t start_time;

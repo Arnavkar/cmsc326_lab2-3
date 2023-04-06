@@ -15,6 +15,8 @@
                            // to force each thread to use a
                            // significant fraction of its quantum.
 
+#define NUM_MLFQS 20  // Number of queues
+
 struct thread_info 
   {
     int64_t start_time;
