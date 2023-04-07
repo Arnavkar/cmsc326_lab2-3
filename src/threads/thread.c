@@ -20,6 +20,8 @@
    of thread.h for details. */
 #define THREAD_MAGIC 0xcd6abf4b
 
+#define MAX(a,b) ((a > b)? a : b) //Borrowed from Henry
+
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
 static struct list ready_list;
@@ -123,10 +125,10 @@ thread_init (void)
 
 /*Function to initialize all priority_queues from 0 - 19*/
 void init_priority_queues(struct priority_queue* mlfq){
-  for (int i = 0; i <= PRI_MAX; i++){
+  for (int i = PRI_MIN; i <= PRI_MAX; i++){
     //No need malloc because we have already statically allocated memory for the priority queues above
     mlfq[i].priority = i;
-    mlfq[i].num_quantums = PRI_MAX-i+3; // At priority 0, num_quantums = 20 | At  priority 19, num_quantums = 3
+    mlfq[i].num_quantums = PRI_MAX-i+1; // At priority 0, num_quantums = 20 | At  priority 19, num_quantums = 1
     list_init(&(mlfq[i].queue));
     
     //Ensure all lists are empty and properly initialized
@@ -168,19 +170,9 @@ thread_tick (void)
   else
     kernel_ticks++;
 
-  /* Enforce preemption. When preemption is enforced, a thread will drop in priority*/
+  /* Enforce preemption.*/
   if (++thread_ticks >= TIME_SLICE*mlfq[t->priority].num_quantums){
-    /*
-      If pre-empted and thread priority is greater than 1, decrease priority by 1 
-      NOTE: Only the idle thread lives on priority MIN, other threads have lowest priority as 1
-    */
-    if(thread_mlfqs){
-      if(t->priority > 0){
-	list_remove(&t->elem);
-	list_push_back(&(mlfq[(t->priority)-1].queue),&t->elem);
-      }
-    }
-    
+    thread_set_priority(MAX(t->priority -1,PRI_MIN));
     intr_yield_on_return ();
   }
 }
@@ -288,8 +280,10 @@ thread_unblock (struct thread *t)
   ASSERT (t->status == THREAD_BLOCKED);
 
   if (thread_mlfqs){
-    /* Place thread in the right queue based on its own priority */
-    list_push_back(&(mlfq[t->priority].queue),&(t->elem));
+    if(t!= idle_thread){
+      /* Place thread in the right queue based on its own priority */
+      list_push_back(&(mlfq[t->priority].queue),&(t->elem));
+    }
   } else {
     list_push_back (&ready_list, &t->elem);
   }
@@ -307,6 +301,7 @@ void thread_wake(struct thread* t,void* aux){
      1. The time passed must be greater or equal to wait_ticks
      2. status must be blocked since sema_down blocks it (not required for threads already on sleep_list)
      3. Check that the wait_ticks is not -1 eg. for some other blocked thread (not required for threads already on sleep_list)
+
   */
   ASSERT (t->status == THREAD_BLOCKED);
   ASSERT (t->wait_ticks != -1);
@@ -385,6 +380,7 @@ thread_exit (void)
      when it calls thread_schedule_tail(). */
   intr_disable ();
   list_remove (&thread_current()->allelem);
+  list_remove (&thread_current()->elem);
   thread_current ()->status = THREAD_DYING;
   schedule ();
   NOT_REACHED ();
@@ -403,7 +399,7 @@ thread_yield (void)
   old_level = intr_disable ();
   if (thread_mlfqs){
     if(cur != idle_thread)
-      list_push_back(&(mlfq[cur->priority].queue),&cur->elem);
+      add_thread_to_priority_queue(cur);
   } else {
     if (cur != idle_thread) 
       list_push_back (&ready_list, &cur->elem);
@@ -412,6 +408,14 @@ thread_yield (void)
   schedule ();
   intr_set_level (old_level);
 }
+
+/*Add thread to its relevant queue */
+void
+add_thread_to_priority_queue(struct thread* t){
+  ASSERT(thread_mlfqs);
+  list_push_back(&(mlfq[t->priority].queue),&t->elem);
+}
+  
 
 /* Invoke function 'func' on all threads, passing along 'aux'.
    This function must be called with interrupts off. */
@@ -450,8 +454,7 @@ sleeping_thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  struct thread *cur = thread_current ();
-  cur->priority = new_priority;
+  thread_current()->priority = new_priority;
 }
 
 /* Returns the current thread's priority. */
