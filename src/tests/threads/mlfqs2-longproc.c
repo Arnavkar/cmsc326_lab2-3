@@ -71,8 +71,8 @@ test_mlfqs2_longproc (void)
 
   thread_set_priority (PRI_MIN); // main at min priority
 
-  msg("Sleeping %d ticks to let other threads run.",30*TIMER_FREQ);
-  timer_sleep(30 * TIMER_FREQ);
+  msg("Sleeping %d ticks to let other threads run.",1*TIMER_FREQ);
+  timer_sleep(1 * TIMER_FREQ);
 
   /* All the other threads now run to termination here. */
   //ASSERT (lock.holder == NULL);

@@ -126,7 +126,7 @@ void init_priority_queues(struct priority_queue* mlfq){
   for (int i = 0; i <= PRI_MAX; i++){
     //No need malloc because we have already statically allocated memory for the priority queues above
     mlfq[i].priority = i;
-    mlfq[i].num_quantums = PRI_MAX+1-i; // At priority 0, num_quantums = 20 | At  priority 19, num_quantums = 1
+    mlfq[i].num_quantums = PRI_MAX-i+3; // At priority 0, num_quantums = 20 | At  priority 19, num_quantums = 3
     list_init(&(mlfq[i].queue));
     
     //Ensure all lists are empty and properly initialized
@@ -173,11 +173,13 @@ thread_tick (void)
     /*
       If pre-empted and thread priority is greater than 1, decrease priority by 1 
       NOTE: Only the idle thread lives on priority MIN, other threads have lowest priority as 1
-
-      thread_set_priority() will move thread to the next queue
     */
-    if(t->priority > 1)
-      thread_set_priority(t->priority-1);
+    if(thread_mlfqs){
+      if(t->priority > 0){
+	list_remove(&t->elem);
+	list_push_back(&(mlfq[(t->priority)-1].queue),&t->elem);
+      }
+    }
     
     intr_yield_on_return ();
   }
@@ -449,12 +451,6 @@ void
 thread_set_priority (int new_priority) 
 {
   struct thread *cur = thread_current ();
-  
-  if (thread_mlfqs){
-    
-    list_remove(&cur->elem);
-    list_push_back(&(mlfq[new_priority].queue),&cur->elem);
-  }
   cur->priority = new_priority;
 }
 

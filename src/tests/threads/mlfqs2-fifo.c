@@ -45,8 +45,7 @@ test_mlfqs2_fifo (void)
   /* Make sure our priority is the default. */
   // ASSERT (thread_get_priority () == PRI_DEFAULT);
 
-  msg ("%d threads will iterate %d times running round robin.",
-       THREAD_CNT, ITER_CNT);
+  msg ("%d threads will iterate %d times running round robin.",THREAD_CNT, ITER_CNT);
   msg ("If the order varies then there is a bug.");
 
   output = op = malloc (sizeof *output * THREAD_CNT * ITER_CNT * 2);
@@ -55,8 +54,8 @@ test_mlfqs2_fifo (void)
   lock_acquire(&lock); // main holds lock
 
   //NOTE: DOES NOT WORK AT PRI_DEFAULT?
-  printf("All threads at priority %d\n",PRI_DEFAULT-2);
-  thread_set_priority (PRI_MIN-1); // main at min priority
+  printf("All threads at priority %d\n",PRI_DEFAULT);
+  thread_set_priority (PRI_MIN+1); // main at min priority
   for (i = 0; i < THREAD_CNT; i++) 
     {
       char name[16];
@@ -66,7 +65,7 @@ test_mlfqs2_fifo (void)
       d->iterations = 0;
       d->lock = &lock; // all share one lock
       d->op = &op;
-      thread_create (name, PRI_DEFAULT-2, simple_thread_func, d);
+      thread_create (name, PRI_DEFAULT, simple_thread_func, d);
     }
   //print_mlfqs();
   lock_release(&lock); // all threads can run
