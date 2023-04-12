@@ -322,13 +322,26 @@ void thread_wake(struct thread* t,void* aux){
 void thread_sleep(struct thread* t,int64_t wait_time){
   /* Set ticks for the current thread to the given ticks value and thread status to sleep */
   t->wait_ticks = wait_time;
-
-  /*TODO - Put this thread onto the sleeping list*/
+  
+  /* Put this thread onto the sleeping list - interrupts disabled*/
   list_push_back(&sleep_list, &(t->sleep_elem));
   
   /*Pass semaphore pointer to sema_down to down the semaphore, causing it to sleep*/
   /*NOTE: Sema_down inherently called thread_block*/
   sema_down(&(t->sema));
+}
+
+/* Function called on all_threads when priority needs to be boosted to PRI_MAX*/
+void refresh_all_thread_priority(void){
+  for (int i = 0;i<PRI_MAX;i++){
+    while(!list_empty(&mlfq[i])){
+      /* remove t from it's current priority queue,
+	 then reset thread priority and push it into it's rightful queue */
+      struct thread *t = list_entry (list_pop_front (&(mlfq[i].queue)), struct thread, elem);
+      list_push_back(&mlfq[PRI_MAX].queue,&t->elem);
+      t->priority = PRI_MAX;
+    }
+  }
 }
 
 /* Returns the name of the running thread. */
@@ -399,7 +412,7 @@ thread_yield (void)
   old_level = intr_disable ();
   if (thread_mlfqs){
     if(cur != idle_thread)
-      add_thread_to_priority_queue(cur);
+      list_push_back(&(mlfq[cur->priority].queue),&cur->elem);
   } else {
     if (cur != idle_thread) 
       list_push_back (&ready_list, &cur->elem);
@@ -407,13 +420,6 @@ thread_yield (void)
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
-}
-
-/*Add thread to its relevant queue */
-void
-add_thread_to_priority_queue(struct thread* t){
-  ASSERT(thread_mlfqs);
-  list_push_back(&(mlfq[t->priority].queue),&t->elem);
 }
   
 

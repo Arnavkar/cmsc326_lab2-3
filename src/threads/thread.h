@@ -25,6 +25,7 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 19                  /* Default priority. */
 #define PRI_MAX 19                      /* Highest priority. */
+#define MLFQS_PRIORITY_REFRESH 50       /* Number of ticks before boosting priority of all threads to max */
 
 /* A kernel thread or user process.
 
@@ -139,6 +140,7 @@ void thread_unblock (struct thread *);
 
 void thread_wake(struct thread* t,void* aux);
 void thread_sleep(struct thread* t,int64_t wait_time);
+void refresh_all_thread_priority(void);
 
 struct thread *thread_current (void);
 tid_t thread_tid (void);
