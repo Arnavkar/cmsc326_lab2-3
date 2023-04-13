@@ -23,6 +23,7 @@ struct thread_info
     int tick_count;
     int refresh_count;
     int qtimes[NUM_MLFQS];
+    int id;
   };
 
 #define THREAD_CNT 2
@@ -34,25 +35,22 @@ void
 test_mlfqs2_priority_refresh (void) 
 {
   struct thread_info info[THREAD_CNT];
-  struct lock lock;
-  int i, j, cnt;
+  int i, j;
   int64_t start_time;
 
   ASSERT (thread_mlfqs);
   start_time = timer_ticks ();
   
-  msg ("Starting 1 cpu-bound thread that runs to completion.");
-  msg ("Should move down one queue each time, before resetting back to PRI_MAX after 210 ticks");
+  msg ("Starting 2 cpu-bound threads that run2 to completion.");
+  msg ("Should move down one queue each time, before resetting back to PRI_MAX after 50 ticks");
+  msg ("NOTE: Given that refresh duration is after 50 ticks, we can expect to see priority go down from 19 - 10 before a priority refresh. Setting MLFQ_PRIORITY_REFRESH to 210 ticks might allow priority to drop all the way down to 0");
 
-  lock_init (&lock);
-  
- 
   for (i = 0; i < THREAD_CNT; i++) 
     {
-      char name[16];
+      char name[7];
       struct thread_info *ti = &info[i];
-      snprintf (name, sizeof name, "lproc %d", i);
-      ti->lock = &lock; // all share one lock
+      snprintf (name, sizeof name, "proc %d", i);
+      ti->id = i;
       ti->tick_count = 0;
       ti->start_time = start_time;
       ti->refresh_count = 0;
@@ -70,30 +68,25 @@ test_mlfqs2_priority_refresh (void)
   timer_sleep(30 * TIMER_FREQ);
   
   /* All the other threads now run to termination here. */
-  msg("\n\nOutput from Main-------------");
   for (i = 0; i < THREAD_CNT; i++) {
     int sum = 0;
-    msg ("Thread %d received %d ticks.", i, info[i].tick_count);
+    msg ("\n\nThread %d received %d ticks (from tick_count).", i, info[i].tick_count);
     for (j = PRI_MAX; j >= PRI_MIN; j--) {
       msg("Q %3d %6d",j,info[i].qtimes[j]);
       sum += info[i].qtimes[j];
     }
-    msg ("thread %d received %d ticks in total.", i, sum);
-    msg ("Total number of priority refreshes = %d, Should be %d",info[i].refresh_count,sum/MLFQS_PRIORITY_REFRESH);
+    msg ("Thread %d received %d ticks in total (cumulatively counted).", i, sum);
+    msg ("Total number of detected priority refreshes = %d (Should be %d)",info[i].refresh_count,sum/MLFQS_PRIORITY_REFRESH);
   }
 }
 
 static void 
 test_cpubound (void *info_) 
 {
-  //Sleep each created thread so that it does not start executing right away
-  timer_sleep(2*TIMER_FREQ);
   
   struct thread_info *ti = info_;
-  int64_t spin_time =  10 * TIMER_FREQ;
+  int64_t spin_time = 30  * TIMER_FREQ;
   int64_t last_time = 0;
-  int last_priority = PRI_MAX;
-  int num_priority_changes = 0;
 
   while (timer_elapsed (ti->start_time) < spin_time) {
     int64_t cur_time = timer_ticks ();
@@ -106,18 +99,10 @@ test_cpubound (void *info_)
       ti->tick_count++;
       ti->qtimes[thread_get_priority()] += 1;
       last_time = cur_time;
-      
-      if(cur_priority != last_priority){
-	//msg("%3d | ",cur_priority);
-	last_priority = cur_priority;
-	num_priority_changes++;
-      }
        
-      if ((ti->tick_count % 50 == 0) && (ti->tick_count > 0)){
+      if ((ti->tick_count % MLFQS_PRIORITY_REFRESH == 0) && (ti->tick_count > 0)){
 	ti->refresh_count++;
       }  
     }
   }
-  msg("Thread output ----------");
-  msg("Total number of priority changes %3d",num_priority_changes);
 }
