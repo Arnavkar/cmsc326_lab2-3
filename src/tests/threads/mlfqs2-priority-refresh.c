@@ -1,6 +1,6 @@
 /*
-  Creates a single threads that runs and moves down the queues, before being pushed
-  back up to pri_max. Text that the priority refresh every 50 ticks is working as expected
+  Creates a 2 threads that run and moves down the queues,
+  Check that the priority refresh every 50 ticks is working as expected
   @Author: Arnav Shirodkar
  */
 
@@ -25,10 +25,9 @@ struct thread_info
     int qtimes[NUM_MLFQS];
   };
 
-#define ITER_CNT 1
-#define THREAD_CNT 1
+#define THREAD_CNT 2
 
-static void test_priority_refresh(void *info_);
+static void test_cpubound(void *info_);
 void test_mlfqs2_priority_refresh (void) ;
 
 void
@@ -44,12 +43,10 @@ test_mlfqs2_priority_refresh (void)
   
   msg ("Starting 1 cpu-bound thread that runs to completion.");
   msg ("Should move down one queue each time, before resetting back to PRI_MAX after 210 ticks");
-  msg ("NOTE: Total number of ticks spent traversing all queues based on quantums for each queue is 210 ticks. Ensure that the refresh time is set to 210 ticks instead of 50 ticks before running this test");
 
   lock_init (&lock);
-  lock_acquire(&lock); // main holds lock
-  lock_release(&lock); //release lock
   
+ 
   for (i = 0; i < THREAD_CNT; i++) 
     {
       char name[16];
@@ -60,14 +57,16 @@ test_mlfqs2_priority_refresh (void)
       ti->start_time = start_time;
       ti->refresh_count = 0;
       for (j = 0; j < NUM_MLFQS; j++) ti->qtimes[j] = 0;
-      thread_create (name, PRI_MAX, test_priority_refresh, ti);
+      thread_create (name, PRI_MAX, test_cpubound, ti);
     }
+  
   msg ("Starting threads took %"PRId64" ticks.",
        timer_elapsed (start_time));
 
   thread_set_priority (PRI_MIN); // main at min priority
  
   msg("Sleeping %d ticks to let other threads run.",30*TIMER_FREQ);
+  
   timer_sleep(30 * TIMER_FREQ);
   
   /* All the other threads now run to termination here. */
@@ -85,11 +84,13 @@ test_mlfqs2_priority_refresh (void)
 }
 
 static void 
-test_priority_refresh (void *info_) 
+test_cpubound (void *info_) 
 {
+  //Sleep each created thread so that it does not start executing right away
+  timer_sleep(2*TIMER_FREQ);
+  
   struct thread_info *ti = info_;
-  int64_t sleep_time = 5 * TIMER_FREQ;
-  int64_t spin_time =  30 * TIMER_FREQ;
+  int64_t spin_time =  10 * TIMER_FREQ;
   int64_t last_time = 0;
   int last_priority = PRI_MAX;
   int num_priority_changes = 0;
@@ -117,5 +118,6 @@ test_priority_refresh (void *info_)
       }  
     }
   }
-  msg("%3d",num_priority_changes);
+  msg("Thread output ----------");
+  msg("Total number of priority changes %3d",num_priority_changes);
 }
