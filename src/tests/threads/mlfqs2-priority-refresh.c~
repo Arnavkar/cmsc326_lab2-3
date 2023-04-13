@@ -1,6 +1,9 @@
-/* Creates one cpu-bound thread that runs ~3 seconds.
-   @author S. Anderson
-*/
+/*
+  Creates a single threads that runs and moves down the queues, before being pushed
+  back up to pri_max. Text that the priority refresh every 50 ticks is working as expected
+  @Author: Arnav Shirodkar
+ */
+
 
 #include <stdio.h>
 #include <inttypes.h>
@@ -27,14 +30,14 @@ struct thread_info
     int qtimes[NUM_MLFQS];
   };
 
-#define THREAD_CNT 1 //Change back to 3
 #define ITER_CNT 1
+#define THREAD_CNT
 
 static void test_cpubound(void *info_);
-void test_mlfqs2_longproc (void) ;
+void test_mlfqs2_priority_refresh (void) ;
 
 void
-test_mlfqs2_longproc (void) 
+test_mlfqs2_priority_refresh (void) 
 {
   struct thread_info info[THREAD_CNT];
   struct lock lock;
@@ -44,8 +47,9 @@ test_mlfqs2_longproc (void)
   ASSERT (thread_mlfqs);
   start_time = timer_ticks ();
   
-  msg ("Starting %d cpu-bound thread runs to completion.",THREAD_CNT);
-  msg ("Should move down one queue each time.");
+  msg ("Starting 1 cpu-bound thread that runs to completion.");
+  msg ("Should move down one queue each time, before resetting back to PRI_MAX after 210 ticks");
+  msg ("NOTE: Total number of ticks spent traversing all queues based on quantums for each queue is 210 ticks. Ensure that the refresh time is set to 210 ticks instead of 50 ticks before running this test");
 
   lock_init (&lock);
   lock_acquire(&lock); // main holds lock
@@ -106,4 +110,3 @@ test_cpubound (void *info_)
       }
     }
 }
-

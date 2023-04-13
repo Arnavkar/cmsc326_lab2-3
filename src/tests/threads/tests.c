@@ -42,6 +42,7 @@ static const struct test tests[] =
     {"mlfqs2-longproc", test_mlfqs2_longproc},
     {"mlfqs2-shortlong", test_mlfqs2_shortlong},
     {"test-single-thread-sleep", test_single_thread_sleep},
+    {"mlfqs2-priority-refresh", test_mlfqs2_priority_refresh},
   };
 
 static const char *test_name;

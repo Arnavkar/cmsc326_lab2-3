@@ -178,7 +178,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
 
   /* Disables interrupts to prevent race conditions on shared data */
   
-  //enum intr_level old_level = intr_disable ();
+  enum intr_level old_level = intr_disable ();
 
   /* With interrupts disabled, check through the all threads list and
      wake up anything that's currently sleeping && needs to be woken */
@@ -189,10 +189,10 @@ timer_interrupt (struct intr_frame *args UNUSED)
   /* If mlfqs, check ticks elapsed
      - If not 0 and modulo of ticks by 50 is equal to 0, refresh priority for all threads */
   if(thread_mlfqs)
-    if(ticks != 0 && ticks % MLFQS_PRIORITY_REFRESH == 0)
-      // refresh_all_thread_priority();
+    if((ticks > 0) && (ticks % MLFQS_PRIORITY_REFRESH == 0))
+      refresh_all_thread_priority();
 
-      //intr_set_level (old_level);
+  intr_set_level (old_level);
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer

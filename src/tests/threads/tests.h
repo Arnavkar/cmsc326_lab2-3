@@ -36,6 +36,7 @@ extern test_func test_mlfqs2_fifo;
 extern test_func test_mlfqs2_longproc;
 extern test_func test_mlfqs2_shortlong;
 extern test_func test_single_thread_sleep;
+extern test_func test_mlfqs2_priority_refresh;
 
 
 void msg (const char *, ...);

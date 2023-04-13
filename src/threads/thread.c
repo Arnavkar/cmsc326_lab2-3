@@ -334,7 +334,8 @@ void thread_sleep(struct thread* t,int64_t wait_time){
 /* Function called on all_threads when priority needs to be boosted to PRI_MAX*/
 void refresh_all_thread_priority(void){
   for (int i = 0;i<PRI_MAX;i++){
-    while(!list_empty(&mlfq[i])){
+    if(list_empty(&(mlfq[i].queue))) continue;
+    else {
       /* remove t from it's current priority queue,
 	 then reset thread priority and push it into it's rightful queue */
       struct thread *t = list_entry (list_pop_front (&(mlfq[i].queue)), struct thread, elem);
